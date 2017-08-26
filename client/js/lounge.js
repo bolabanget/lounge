@@ -23,6 +23,7 @@ const constants = require("./constants");
 const storage = require("./localStorage");
 const utils = require("./utils");
 require("./webpush");
+require("./clipboard");
 
 $(function() {
 	var sidebar = $("#sidebar, #footer");
