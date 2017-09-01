@@ -83,18 +83,30 @@ module.exports = function() {
 		}, app);
 	}
 
-	server.listen({
-		port: config.port,
-		host: config.host,
-	}, () => {
-		const protocol = config.https.enable ? "https" : "http";
-		var address = server.address();
+	let listenParams;
 
-		log.info(
-			"Available at " +
-			colors.green(`${protocol}://${address.address}:${address.port}/`) +
-			` in ${colors.bold(config.public ? "public" : "private")} mode`
-		);
+	if (typeof config.host === "string" && config.host.startsWith("unix:")) {
+		listenParams = config.host.replace(/^unix:/, "");
+	} else {
+		listenParams = {
+			port: config.port,
+			host: config.host,
+		};
+	}
+
+	server.listen(listenParams, () => {
+		if (typeof listenParams === "string") {
+			log.info("Available on socket " + colors.green(listenParams));
+		} else {
+			const protocol = config.https.enable ? "https" : "http";
+			const address = server.address();
+
+			log.info(
+				"Available at " +
+				colors.green(`${protocol}://${address.address}:${address.port}/`) +
+				` in ${colors.bold(config.public ? "public" : "private")} mode`
+			);
+		}
 
 		const sockets = io(server, {
 			serveClient: false,
@@ -115,6 +127,31 @@ module.exports = function() {
 		new Identification((identHandler) => {
 			manager.init(identHandler, sockets);
 		});
+
+		// Handle ctrl+c and kill gracefully
+		let suicideTimeout = null;
+		const exitGracefully = function() {
+			if (suicideTimeout !== null) {
+				return;
+			}
+
+			// Forcefully exit after 3 seconds
+			suicideTimeout = setTimeout(() => process.exit(1), 3000);
+
+			log.info("Exiting...");
+
+			// Close all client and IRC connections
+			manager.clients.forEach((client) => client.quit());
+
+			// Close http server
+			server.close(() => {
+				clearTimeout(suicideTimeout);
+				process.exit(0);
+			});
+		};
+
+		process.on("SIGINT", exitGracefully);
+		process.on("SIGTERM", exitGracefully);
 	});
 };
 
@@ -178,7 +215,7 @@ function index(req, res, next) {
 	res.render("index", data);
 }
 
-function initializeClient(socket, client, generateToken, token) {
+function initializeClient(socket, client, token) {
 	socket.emit("authorized");
 
 	socket.on("disconnect", function() {
@@ -351,7 +388,7 @@ function initializeClient(socket, client, generateToken, token) {
 		});
 	};
 
-	if (generateToken) {
+	if (!Helper.config.public && token === null) {
 		client.generateToken((newToken) => {
 			token = newToken;
 
@@ -432,7 +469,7 @@ function performAuthentication(data) {
 	const socket = this;
 	let client;
 
-	const finalInit = () => initializeClient(socket, client, !!data.remember, data.token || null);
+	const finalInit = () => initializeClient(socket, client, data.token || null);
 
 	const initClient = () => {
 		client.ip = getClientIp(socket.request);

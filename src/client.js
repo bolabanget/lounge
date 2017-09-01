@@ -41,6 +41,7 @@ var inputs = [
 	"ctcp",
 	"msg",
 	"part",
+	"rejoin",
 	"action",
 	"away",
 	"connect",
@@ -490,15 +491,24 @@ Client.prototype.names = function(data) {
 	});
 };
 
-Client.prototype.quit = function() {
-	var sockets = this.sockets.sockets;
-	var room = sockets.adapter.rooms[this.id] || [];
-	for (var user in room) {
-		var socket = sockets.adapter.nsp.connected[user];
-		if (socket) {
-			socket.disconnect();
+Client.prototype.quit = function(signOut) {
+	const sockets = this.sockets.sockets;
+	const room = sockets.adapter.rooms[this.id];
+
+	if (room && room.sockets) {
+		for (const user in room.sockets) {
+			const socket = sockets.connected[user];
+
+			if (socket) {
+				if (signOut) {
+					socket.emit("sign-out");
+				}
+
+				socket.disconnect();
+			}
 		}
 	}
+
 	this.networks.forEach((network) => {
 		if (network.irc) {
 			network.irc.quit(Helper.config.leaveMessage);

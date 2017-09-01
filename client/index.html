@@ -97,12 +97,6 @@
 								<input class="input" type="password" name="password">
 								</label>
 							</div>
-							<div class="col-xs-12">
-								<label class="remember">
-									<input type="checkbox" name="remember" value="on" id="sign-in-remember" checked>
-									Stay signed in
-								</label>
-							</div>
 							<div class="col-xs-12 error" style="display: none;">
 								Authentication failed.
 							</div>
@@ -798,6 +792,19 @@
 							<div class="description">
 								<p>Close the current channel or private message window.</p>
 								<p>Aliases: <code>/close</code>, <code>/leave</code></p>
+							</div>
+						</div>
+
+						<div class="help-item">
+							<div class="subject">
+								<code>/rejoin</code>
+							</div>
+							<div class="description">
+								<p>
+									Leave and immediately rejoin the current channel. Useful to
+									quickly get op from ChanServ in an empty channel, for example.
+								</p>
+								<p>Alias: <code>/cycle</code></p>
 							</div>
 						</div>
 
